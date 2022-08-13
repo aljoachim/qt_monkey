@@ -19,6 +19,7 @@
 #include <QTableView>
 #include <QTreeWidget>
 #include <QWidget>
+#include <QDebug>
 
 #include "agent.hpp"
 #include "common.hpp"
@@ -44,13 +45,30 @@ namespace
 
 static constexpr int repeatEventTimeoutMs = 100;
 
+static QObjectList getSiblings(QObject* obj)
+{
+    QObject* p = obj->parent();
+    if(p) return p->children();
+    auto w = qobject_cast<QWidget*>(obj);
+    if(!w) return QObjectList({obj});
+    QWidgetList topLevelWidgets = qApp->topLevelWidgets();
+    if(!topLevelWidgets.contains(w)) return QObjectList({obj});
+
+    QObjectList siblings;
+    std::transform(topLevelWidgets.begin(), topLevelWidgets.end(), std::back_inserter(siblings),
+                   [](QWidget* w){return qobject_cast<QObject*>(w);});
+    return siblings;
+}
+
 static QString numAmongOthersWithTheSameClass(const QObject &w)
 {
+    /*
     QObject *p = w.parent();
     if (p == nullptr)
         return QString();
 
-    const QObjectList &childs = p->children();
+    const QObjectList &childs = p->children();*/
+    const QObjectList &childs = getSiblings(const_cast<QObject*>(&w));
     int order = 0;
     for (QObject *obj : childs) {
         if (obj == &w) {
@@ -68,10 +86,27 @@ static QString numAmongOthersWithTheSameClass(const QObject &w)
     return QString();
 }
 
+static bool isObjectUnique(const QObject *obj)
+{
+    /*
+    QObject* p = obj->parent();
+    if(!p) return isTopLevelWidgetUnique(obj);*/
+    QObjectList siblings = getSiblings(const_cast<QObject*>(obj));
+
+    for(auto c : siblings)
+    {
+        if(c == obj) continue;
+        if(c->objectName() == obj->objectName() &&
+           c->metaObject()->className() == obj->metaObject()->className()) return false;
+    }
+
+    return true;
+}
+
 static QString qtObjectId(const QObject &w)
 {
     const QString name = w.objectName();
-    if (name.isEmpty()) {
+    if (name.isEmpty() || !isObjectUnique(&w)) {
         return QString("<class_name=%1%2>")
             .arg(w.metaObject()->className(),
                  numAmongOthersWithTheSameClass(w));
@@ -159,11 +194,13 @@ static QString mouseEventToJavaScript(const QString &widgetName,
 
 static bool isOnlyOneChildWithSuchClass(QObject &w)
 {
+    /*
     if (w.parent() == nullptr)
         return false;
 
-    const QObjectList &childs = w.parent()->children();
+    const QObjectList &childs = w.parent()->children();*/
 
+    const QObjectList &childs = getSiblings(const_cast<QObject*>(&w));
     for (QObject *obj : childs)
         if (obj != &w
             && std::strcmp(obj->metaObject()->className(),

@@ -104,6 +104,61 @@ static QWidget *bruteForceWidgetSearch(const QString &objectName,
     return nullptr;
 }
 
+static QWidget* findWidgetInList(const QString& fullName, const QObjectList& objects, bool shouldBeEnabled, const QRegExp classRx)
+{
+    QString class_name;
+    int class_order = 0;
+    if (classRx.indexIn(fullName) != -1) {
+        class_name = classRx.cap(1);
+        const QStringList res
+            = class_name.split(",", QString::SkipEmptyParts);
+        if (res.size() == 0)
+            class_name = "";
+        else
+            class_name = res[0];
+        if (res.size() > 1) {
+            bool ok = false;
+            class_order = res[1].toInt(&ok);
+            if (!ok)
+                class_order = 0;
+        }
+        DBGPRINT("%s: search object with class: %s, order %d", Q_FUNC_INFO,
+                 qPrintable(class_name), class_order);
+    }
+
+    int order = 0;
+    QObjectList::const_iterator it;
+    QWidget* w;
+    for (it = objects.begin(); it != objects.end(); ++it) {
+        if ((!class_name.isEmpty()
+             && class_name == (*it)->metaObject()->className())
+            || (*it)->objectName() == fullName) {
+            DBGPRINT("%s: found widget %s, order %d", Q_FUNC_INFO,
+                     qPrintable(el), order);
+            w = qobject_cast<QWidget*>(*it);
+            if (shouldBeEnabled && !(w->isVisible() && w->isEnabled()))
+                continue;
+            if (order++ != class_order)
+                continue;
+
+            return w;
+        }
+    }
+
+    if (it == objects.end()) {
+        DBGPRINT("(%s, %d): Can not find object with such name %s, try "
+                 "brute search",
+                 Q_FUNC_INFO, __LINE__, qPrintable(el));
+        w = bruteForceWidgetSearch(fullName, class_name, shouldBeEnabled);
+        if (w == nullptr) {
+            DBGPRINT("(%s, %d) brute force failed", Q_FUNC_INFO, __LINE__);
+            return nullptr;
+        }
+    }
+
+    return w;
+}
+
 static QWidget *doGetWidgetWithSuchName(const QString &objectName,
                                         bool shouldBeEnabled)
 {
@@ -148,16 +203,28 @@ static QWidget *doGetWidgetWithSuchName(const QString &objectName,
     }
     const QRegExp class_name_rx("^<class_name=([^>]+)>$");
     if (lst.isEmpty()) {
-        DBGPRINT("%s: list of widget's name empty, start bruteforce\n",
-                 Q_FUNC_INFO);
-        //! \todo if there is class name use it in brute search
-        QString className;
-        if (class_name_rx.indexIn(mainWidgetName) != -1)
-            className = class_name_rx.cap(1);
-        QWidget *w = bruteForceWidgetSearch(mainWidgetName, className,
-                                            shouldBeEnabled);
-        if (w == nullptr)
-            return nullptr;
+        QObjectList widgets;
+        QWidgetList topLevelWidgets = qApp->topLevelWidgets();
+        std::transform(topLevelWidgets.begin(), topLevelWidgets.end(), std::back_inserter(widgets),
+                       [](QWidget* w){return qobject_cast<QObject*>(w);});
+
+        QWidget* w = findWidgetInList(mainWidgetName, widgets, shouldBeEnabled, class_name_rx);
+        if(!w)
+        {
+            qDebug() << "BRUTEFORCE";
+            DBGPRINT("%s: list of widget's name empty, start bruteforce\n",
+                     Q_FUNC_INFO);
+            //! \todo if there is class name use it in brute search
+            QString className;
+            if (class_name_rx.indexIn(mainWidgetName) != -1)
+                className = class_name_rx.cap(1);
+            qDebug() << className << mainWidgetName;
+            QWidget *w = bruteForceWidgetSearch(mainWidgetName, className,
+                                                shouldBeEnabled);
+            if (w == nullptr){ qDebug() << "BRUTEFORCE FAILED";
+                return nullptr;}
+        }
+
         lst << w;
     }
 
@@ -170,55 +237,9 @@ static QWidget *doGetWidgetWithSuchName(const QString &objectName,
     while (!names.isEmpty()) {
         const QObjectList &clist = w->children();
         const QString &el = names.first();
-        QString class_name;
-        int class_order = 0;
-        if (class_name_rx.indexIn(el) != -1) {
-            class_name = class_name_rx.cap(1);
-            const QStringList res
-                = class_name.split(",", QString::SkipEmptyParts);
-            if (res.size() == 0)
-                class_name = "";
-            else
-                class_name = res[0];
-            if (res.size() > 1) {
-                bool ok = false;
-                class_order = res[1].toInt(&ok);
-                if (!ok)
-                    class_order = 0;
-            }
-            DBGPRINT("%s: search object with class: %s, order %d", Q_FUNC_INFO,
-                     qPrintable(class_name), class_order);
-        }
-        int order = 0;
-        QObjectList::const_iterator it;
-        for (it = clist.begin(); it != clist.end(); ++it) {
-            if ((!class_name.isEmpty()
-                 && class_name == (*it)->metaObject()->className())
-                || (*it)->objectName() == el) {
-                DBGPRINT("%s: found widget %s, order %d", Q_FUNC_INFO,
-                         qPrintable(el), order);
-                w = qobject_cast<QWidget *>(*it);
-                if (shouldBeEnabled && !(w->isVisible() && w->isEnabled()))
-                    continue;
-                if (order++ != class_order)
-                    continue;
-
-                names.removeFirst();
-                break;
-            }
-        }
-
-        if (it == clist.end()) {
-            DBGPRINT("(%s, %d): Can not find object with such name %s, try "
-                     "brute search",
-                     Q_FUNC_INFO, __LINE__, qPrintable(el));
-            w = bruteForceWidgetSearch(el, class_name, shouldBeEnabled);
-            if (w == nullptr) {
-                DBGPRINT("(%s, %d) brute force failed", Q_FUNC_INFO, __LINE__);
-                return nullptr;
-            }
-            names.removeFirst();
-        }
+        w = findWidgetInList(el, clist, shouldBeEnabled, class_name_rx);
+        if(!w) return nullptr;
+        names.removeFirst();
     }
 
     return w;
