@@ -62,12 +62,6 @@ static QObjectList getSiblings(QObject* obj)
 
 static QString numAmongOthersWithTheSameClass(const QObject &w)
 {
-    /*
-    QObject *p = w.parent();
-    if (p == nullptr)
-        return QString();
-
-    const QObjectList &childs = p->children();*/
     const QObjectList &childs = getSiblings(const_cast<QObject*>(&w));
     int order = 0;
     for (QObject *obj : childs) {
@@ -88,9 +82,6 @@ static QString numAmongOthersWithTheSameClass(const QObject &w)
 
 static bool isObjectUnique(const QObject *obj)
 {
-    /*
-    QObject* p = obj->parent();
-    if(!p) return isTopLevelWidgetUnique(obj);*/
     QObjectList siblings = getSiblings(const_cast<QObject*>(obj));
 
     for(auto c : siblings)
@@ -194,12 +185,6 @@ static QString mouseEventToJavaScript(const QString &widgetName,
 
 static bool isOnlyOneChildWithSuchClass(QObject &w)
 {
-    /*
-    if (w.parent() == nullptr)
-        return false;
-
-    const QObjectList &childs = w.parent()->children();*/
-
     const QObjectList &childs = getSiblings(const_cast<QObject*>(&w));
     for (QObject *obj : childs)
         if (obj != &w
