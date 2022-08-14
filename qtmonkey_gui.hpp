@@ -23,8 +23,12 @@ signals:
     void criticalError(const QString &);
 
 public:
+    #ifndef QT_MONKEY_TEST
     explicit QtMonkeyAppCtrl(const QString &appPath, const QStringList &appArgs,
                              QObject *parent = nullptr);
+    #endif
+    explicit QtMonkeyAppCtrl(const QString& monkeyAppPath, const QString& userAppPath,
+                             const QStringList &userAppArgs, QObject *parent = nullptr);
     void runScript(const QString &script,
                    const QString &scriptFilename = QString());
 private slots:
@@ -38,6 +42,7 @@ private:
     QByteArray jsonFromMonkey_;
 };
 
+#ifndef QT_MONKEY_TEST
 class QtMonkeyWindow
 #ifndef Q_MOC_RUN
     final
@@ -98,3 +103,4 @@ private:
     void logNewLine(MsgType, const QString &);
     void saveScriptToFile(const QString &fileName);
 };
+#endif

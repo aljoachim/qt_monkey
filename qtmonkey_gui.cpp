@@ -28,6 +28,7 @@ static const QLatin1String testAppArgsPrefName{"test app arguments"};
 static const QLatin1String protocolModePrefName{"protocol mode"};
 static const QLatin1String pathToScriptDirPrefName{"path to script dir"};
 
+#ifndef QT_MONKEY_TEST
 QtMonkeyAppCtrl::QtMonkeyAppCtrl(const QString &appPath,
                                  const QStringList &appArgs, QObject *parent)
     : QObject(parent)
@@ -53,6 +54,29 @@ QtMonkeyAppCtrl::QtMonkeyAppCtrl(const QString &appPath,
 
     QStringList args;
     args << QStringLiteral("--user-app") << appPath << appArgs;
+    qtmonkeyApp_.start(monkeyAppPath, args);
+}
+#endif
+
+QtMonkeyAppCtrl::QtMonkeyAppCtrl(const QString &monkeyAppPath, const QString &userAppPath, const QStringList &userAppArgs, QObject *parent)
+{
+    const QFileInfo monkeyAppFileInfo{monkeyAppPath};
+    if (!(monkeyAppFileInfo.exists() && monkeyAppFileInfo.isFile()
+          && monkeyAppFileInfo.isExecutable()))
+        throw std::runtime_error(
+            T_("Can not find %1").arg(monkeyAppPath).toStdString());
+
+    connect(&qtmonkeyApp_, SIGNAL(error(QProcess::ProcessError)), this,
+            SLOT(monkeyAppError(QProcess::ProcessError)));
+    connect(&qtmonkeyApp_, SIGNAL(finished(int, QProcess::ExitStatus)), this,
+            SLOT(monkeyAppFinished(int, QProcess::ExitStatus)));
+    connect(&qtmonkeyApp_, SIGNAL(readyReadStandardOutput()), this,
+            SLOT(monkeyAppNewOutput()));
+    connect(&qtmonkeyApp_, SIGNAL(readyReadStandardError()), this,
+            SLOT(monkeyAppNewErrOutput()));
+
+    QStringList args;
+    args << QStringLiteral("--user-app") << userAppPath << userAppArgs;
     qtmonkeyApp_.start(monkeyAppPath, args);
 }
 
@@ -132,7 +156,7 @@ void QtMonkeyAppCtrl::runScript(const QString &script,
         sentBytes += nbytes;
     } while (sentBytes < data.size());
 }
-
+#ifndef QT_MONKEY_TEST
 QtMonkeyWindow::QtMonkeyWindow(QWidget *parent) : QWidget(parent)
 {
     setupUi(this);
@@ -468,6 +492,7 @@ void QtMonkeyWindow::on_pbSaveScript__pressed()
     saveScriptToFile(scriptFileName_);
 }
 
+
 int main(int argc, char *argv[])
 {
     const char *enc = nullptr;
@@ -490,3 +515,5 @@ int main(int argc, char *argv[])
     mw.show();
     return app.exec();
 }
+
+#endif
