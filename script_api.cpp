@@ -77,6 +77,7 @@ static QWidget *bruteForceWidgetSearch(const QString &objectName,
                                        const QString &className,
                                        bool shouldBeEnabled)
 {
+    qDebug() << "BRUTE FORCE";
     const QWidgetList allWdg = QApplication::allWidgets();
     for (QWidget *widget : allWdg) {
         if (!className.isEmpty()
@@ -209,21 +210,8 @@ static QWidget *doGetWidgetWithSuchName(const QString &objectName,
                        [](QWidget* w){return qobject_cast<QObject*>(w);});
 
         QWidget* w = findWidgetInList(mainWidgetName, widgets, shouldBeEnabled, class_name_rx);
-        if(!w)
-        {
-            qDebug() << "BRUTEFORCE";
-            DBGPRINT("%s: list of widget's name empty, start bruteforce\n",
-                     Q_FUNC_INFO);
-            //! \todo if there is class name use it in brute search
-            QString className;
-            if (class_name_rx.indexIn(mainWidgetName) != -1)
-                className = class_name_rx.cap(1);
-            qDebug() << className << mainWidgetName;
-            QWidget *w = bruteForceWidgetSearch(mainWidgetName, className,
-                                                shouldBeEnabled);
-            if (w == nullptr){ qDebug() << "BRUTEFORCE FAILED";
-                return nullptr;}
-        }
+        qDebug() << w;
+        if(!w) return nullptr;
 
         lst << w;
     }
