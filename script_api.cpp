@@ -639,10 +639,10 @@ void ScriptAPI::log(const QString &msgStr)
 
 void ScriptAPI::doMouseBtnEvent(const QString &widgetName,
                                 const QString &buttonName, int x, int y,
-                                MouseBtnEventType event_type)
+                                MouseBtnEventType event_type, bool shouldBeEnabled)
 {
     QWidget *w = getWidgetWithSuchName(agent_, widgetName,
-                                       waitWidgetAppearTimeoutSec_, true);
+                                       waitWidgetAppearTimeoutSec_, shouldBeEnabled);
 
     if (w == nullptr) {
         agent_.throwScriptError(
@@ -711,10 +711,10 @@ void ScriptAPI::doClickItem(const QString &objectName, const QString &itemName,
 }
 
 void ScriptAPI::mouseClick(const QString &widgetName, const QString &button,
-                           int x, int y)
+                           int x, int y, bool shouldBeEnabled)
 {
     Step step(agent_);
-    doMouseBtnEvent(widgetName, button, x, y, MouseBtnEventType::Click);
+    doMouseBtnEvent(widgetName, button, x, y, MouseBtnEventType::Click, shouldBeEnabled);
 }
 
 void ScriptAPI::mouseDClick(const QString &widgetName, const QString &button,

@@ -55,7 +55,7 @@ public slots:
      * @param x x of click in widget coordinate system
      * @param y y of click in widget coordinate system
      */
-    void mouseClick(const QString &widget, const QString &button, int x, int y);
+    void mouseClick(const QString &widget, const QString &button, int x, int y, bool shouldBeEnabled = true);
     void mouseDClick(const QString &widget, const QString &button, int x,
                      int y);
     void mousePress(const QString &widget, const QString &button, int x, int y);
@@ -180,7 +180,7 @@ private:
     int newEventLoopWaitTimeoutSecs_ = 5;
 
     void doMouseBtnEvent(const QString &widgetName, const QString &buttonName,
-                         int x, int y, internal::MouseBtnEventType);
+                         int x, int y, internal::MouseBtnEventType, bool shouldBeEnabled = true);
     void doClickItem(const QString &objectName, const QString &itemName,
                      bool isDblClick,
                      Qt::MatchFlag searchItemFlag = Qt::MatchStartsWith);
